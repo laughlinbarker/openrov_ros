@@ -1,6 +1,10 @@
-Itegration of ROS with the OpenROV
+This document details how to install the ROS side of the openrov_ros package.
 
-install ros...
+(this document is a work in progress)
+
+(the following was all tested under ROS Indigo under Ubuntu 14.04...
+
+install ros indigo...http://wiki.ros.org/indigo/Installation/Ubuntu
 
 install rosbridge & gscam
 ```
