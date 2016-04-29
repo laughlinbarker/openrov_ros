@@ -25,3 +25,13 @@ git clone https://github.com/laughlinbarker/openrov_ros.git openrov
 cd ..
 catkin_make
 ```
+
+
+send motor commands [port, vertical, stbd]
+    rostopic pub -1 openrov/motortarget openrov/motortarget '{motors: [1500, 1500, 1500]}'
+
+send laser command
+    rostopic pub -1 openrov/laser_toggle std_msgs/Int16 '{data: 0}'
+
+send light command
+    rostopic pub -1 openrov/light_command std_msgs/Float32 '{data: 0.5}'

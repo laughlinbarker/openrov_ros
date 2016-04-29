@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(openrov)
 
+find_package(cmake_modules REQUIRED)
+find_package(Eigen REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
@@ -8,7 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   geometry_msgs
   message_generation
-)
+  eigen_conversions)
 
 ################################################
 ## Declare ROS messages, services and actions ##
@@ -43,9 +45,9 @@ find_package(catkin REQUIRED COMPONENTS
   )
 
 ## Generate services in the 'srv' folder
-  add_service_files(
-    FILES
-  )
+#  add_service_files(
+#    FILES
+#  )
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -89,6 +91,7 @@ catkin_package(
 include_directories(
   ${catkin_INCLUDE_DIRS}
 )
+include_directories(SYSTEM ${EIGEN_INCLUDE_DIR})
 
 ## Declare a cpp library
 # add_library(openrov
