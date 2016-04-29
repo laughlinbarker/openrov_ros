@@ -11,7 +11,7 @@
 #include <sensor_msgs/Joy.h>
 
 #include <std_msgs/Int32.h>
-#include "std_msgs/Int32MultiArray.h"
+#include <openrov/motortarget.h>
 #include <std_msgs/Float32.h>
 
 #include <eigen/Eigen/Core>
@@ -24,12 +24,17 @@ public:
 
     void joyCallback(const sensor_msgs::Joy::ConstPtr& joy);
 
+    double limitThrusterSaturation(double &Ppct_d, double &Vpct_d, double &Spct_d);
+    double computePctThrustGraupner230860(double &fDes);
+    double computePctThrustGraupner230357(double &fDes);
+
+
     ros::NodeHandle nh;
 
     int x_controllerAxis, z_controllerAxis, yaw_controllerAxis; //joy.axis indicies for axis for respective movements
     int lightsAdj, laserToggle, camTilt;   //joy.buttons indicies for ROV commands
     double x_gain, z_gain, yaw_gain;    //gain for respective movements
-    std_msgs::Int32MultiArray motor_cmds[3];       //array of motors commands [stbd, port, vert]'
+    openrov::motortarget motor_cmds;       //array of motors commands [port, vert, stbd]'
 
     //published topics - future improvement: custom OpenROV msg that contains all
     ros::Publisher motorPub;
@@ -71,7 +76,7 @@ OpenROVTeleop::OpenROVTeleop():
     //initialize publishers and subscribers
     joySub = nh.subscribe<sensor_msgs::Joy>("joy", 10, &OpenROVTeleop::joyCallback, this);
 
-    motorPub = nh.advertise<std_msgs::Int32MultiArray>("/openrov/motortarget", 1);
+    motorPub = nh.advertise<openrov::motortarget>("/openrov/motortarget", 1);
     lightPub = nh.advertise<std_msgs::Float32>("/openrov/light_command", 1);
     laserPub = nh.advertise<std_msgs::Int32>("/openrov/laser_toggle", 1);
     camTiltPub = nh.advertise<std_msgs::Int32>("/openrov/camera_servo",1);
@@ -83,7 +88,7 @@ void OpenROVTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr& joy)
     d = 0.045;       // [m] - horizontal thruster distance from centerline of CG
 
 
-    // our job now is to calcualte desired prop speed, given some input.
+    // our job now is to calcualte desired prop speed (or pct thrust for PWM ESCs) , given some input.
     // in the short-term let us interpret joystick inputs as a desired wrench (force/torque)
     // instead of a twist (linear/angular velocity - more intuitive), dynamics can come later
 
@@ -92,36 +97,84 @@ void OpenROVTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr& joy)
     mz_d = yaw_gain * joy->axes[yaw_controllerAxis];
 
     // thruster allocation matrix
-    A << 1, 1, 0,
-         0, 0, 1,
-         d, -d, 0;
+    A << 1, 0, 1,
+         0, 1, 0,
+         -d, 0, d;      //full rank
 
-    // ROV body frame forces/torque vector [fx, fz, mz]' - marine body conventions: x: forward, y: stdb, z: down
+    // ROV body frame forces/torques [fx, fz, mz]' - marine body conventions: x: forward, y: stdb, z: down
     Eigen::Vector3d F(fx_d,fz_d,mz_d);
 
-    // solve for thruster force vector [T_stbd, T_port, T_vert]'
-    Eigen::Vector3d T =  A.inverse() * F;  // A.inv is safe because A full rank <--> invertiable
+    // solve for thruster force vector [T_port, T_vert, T_stbd]'
+    Eigen::Vector3d T =  A.inverse() * F;  // A.inv safe because A full rank (by inspection, above) <--> invertiable
 
-    //deal with thruster saturation
 
-    //calculate required ESC command to achieve required motor force
+    //calculate desired percentage thrust from each thruster
+    double Ppct_d, Vpct_d, Spct_d;
+    Ppct_d = computePctThrustGraupner230860(T(0));
+    Vpct_d = computePctThrustGraupner230357(T(1));
+    Spct_d = computePctThrustGraupner230860(T(2));
 
-    //publish ESC command to /openrov/motor_cmd topic
+    //now we deal with thruster saturation - ROV pilots often prefer prioritizing heading authority
+    //but for now lets just scale everything to bring within saturation limits
+    //dirty hack using below hard coded value
+    double mz_max = 2 * d * 7.35;      // [N] see below for reference
+    double fx_max_fwd = 2 * 14.7;
+    double fx_max_rev = 2 * 7.35;
+
+    double scaleFactor = OpenROVTeleop::limitThrusterSaturation(Ppct_d, Vpct_d, Spct_d);
 
 }
 
-double computeThrustGraupner230860(int pctThrust)
+//check for thruster saturation, and if found returns scale thrust vector to avoid said saturation
+double OpenROVTeleop::limitThrusterSaturation(double &Ppct_d, double &Vpct_d, double &Spct_d)
 {
-double t;
+    double max, min;
+    //find maximum desired thrust percentage
+    max = std::max(Ppct_d,Vpct_d);
+    max = std::max(max,Spct_d);
 
-return t;
+    min = std::min(Ppct_d,Vpct_d);
+    min = std::min(min,Spct_d);
+
+    if ((max < -1) || (max > 1)) //saturated
+        return 1/std::max(std::abs(min),max);
+    else
+        return 1;       //no saturation
 }
 
-double computeThrustGraupner230357(int pctThrust)
+//input should be double corresponding to desired thruster force
+//2308.60 are the port/stbd thrusters
+//using rough approximation: https://github.com/laughlinbarker/openrov_teststand/tree/master/test_stand_data/sample_data_and_output
+double OpenROVTeleop::computePctThrustGraupner230860(double &fDes)
 {
-double t;
+double pctThrust;
 
-return t;
+//asuming linear thrust curve w/max fwd thrust 1.5 kg (14.7 N), and 50% rev thrst (7.35 N)
+
+if (fDes > 0)
+    pctThrust = fDes/14.7;
+if (fDes < 0)
+    pctThrust = fDes/7.35;
+if (fDes == 0)
+    pctThrust = 0;
+
+return pctThrust;
+}
+
+//2303.57 is vert thruster, dont have data, but think ~1.3 kg max fwd, approximatly symetrical in ballard pull
+//assuming symetical for time being
+double OpenROVTeleop::computePctThrustGraupner230357(double &fDes)
+{
+double pctThrust;
+
+if (fDes > 0)
+    pctThrust = fDes/14.7;
+if (fDes < 0)
+    pctThrust = fDes/7.35;
+if (fDes == 0)
+    pctThrust = 0;
+
+return pctThrust;
 }
 
 int main(int argc, char** argv)
