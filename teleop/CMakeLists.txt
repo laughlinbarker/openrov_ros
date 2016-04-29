@@ -9,8 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   sensor_msgs
   geometry_msgs
-  message_generation
-  eigen_conversions)
+  message_generation)
 
 ################################################
 ## Declare ROS messages, services and actions ##
@@ -76,7 +75,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #   INCLUDE_DIRS include
    LIBRARIES openrov
-   CATKIN_DEPENDS roscpp rospy message_runtime
+   CATKIN_DEPENDS joy roscpp rospy message_runtime
                   std_msgs sensor_msgs geometry_msgs
    DEPENDS system_lib
 )
@@ -91,7 +90,6 @@ catkin_package(
 include_directories(
   ${catkin_INCLUDE_DIRS}
 )
-include_directories(SYSTEM ${EIGEN_INCLUDE_DIR})
 
 ## Declare a cpp library
 # add_library(openrov
@@ -157,3 +155,16 @@ include_directories(SYSTEM ${EIGEN_INCLUDE_DIR})
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+add_executable(teleop src/teleop.cpp)
+target_link_libraries(teleop ${catkin_LIBRARIES})
+
+#add Eigen libs
+find_package(cmake_modules REQUIRED)
+find_package(Eigen REQUIRED)
+
+include_directories( include
+  ${Eigen_INCLUDE_DIRS}
+  ${catkin_INCLUDE_DIRS}
+  )
+
