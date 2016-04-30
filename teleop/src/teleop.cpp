@@ -39,7 +39,7 @@ public:
     ros::NodeHandle nh;
 
     int x_controllerAxis, z_controllerAxis, yaw_controllerAxis; //joy.axis indicies for axis for respective movements
-    int lightsAdj, laserToggle, camTilt;   //joy.buttons indicies for ROV commands
+    int lightsAdjButton, laserToggleButton, camTiltButton;   //joy.buttons indicies for ROV commands
     double x_gain, z_gain, yaw_gain;    //gain for respective movements
     openrov::motortarget motor_cmds;       //array of motors commands [port, vert, stbd]'
 
@@ -52,6 +52,11 @@ public:
     ros::Subscriber joySub;
 
     double d;       //thruster distance from center line
+    std_msgs::Float32 lightVal;    // desired light level 0-100% corresponds 0-1.0
+    float oldLightVal;             //used for toggling
+    std_msgs::Int32 laserToggle;    // laser toggle - 0=OFF, 255=ON
+    int oldLaserToggle;             //used for toggling
+
 
     Eigen::Matrix3d A;
 };
@@ -61,9 +66,9 @@ OpenROVTeleop::OpenROVTeleop():
     x_controllerAxis(1),       //left stick up/down
     z_controllerAxis(4),       //right stick up/down
     yaw_controllerAxis(0),      //left stick left/right
-    lightsAdj(6),   // cross key left/right
-    laserToggle(10),    //button stick right
-    camTilt(7),      // cross key up/down
+    lightsAdjButton(6),   // cross key left/right
+    laserToggleButton(4),    //button stick right
+    camTiltButton(7),      // cross key up/down
     x_gain(3),
     z_gain(3),
     yaw_gain(0.3)
@@ -72,9 +77,9 @@ OpenROVTeleop::OpenROVTeleop():
     nh.param("X_stick", x_controllerAxis, x_controllerAxis);
     nh.param("Z_stick", z_controllerAxis, z_controllerAxis);
     nh.param("Yaw_stick", yaw_controllerAxis, yaw_controllerAxis);
-    nh.param("lights_adj",lightsAdj, lightsAdj);
-    nh.param("laser_tottle", laserToggle, laserToggle);
-    nh.param("camera_tilt", camTilt, camTilt);
+    nh.param("lights_adj",lightsAdjButton, lightsAdjButton);
+    nh.param("laser_tottle", laserToggleButton, laserToggleButton);
+    nh.param("camera_tilt", camTiltButton, camTiltButton);
     nh.param("x_gain", x_gain, x_gain);
     nh.param("z_gain", z_gain, z_gain);
     nh.param("yaw_gain", yaw_gain, yaw_gain);
@@ -87,12 +92,24 @@ OpenROVTeleop::OpenROVTeleop():
     lightPub = nh.advertise<std_msgs::Float32>("/openrov/light_command", 1);
     laserPub = nh.advertise<std_msgs::Int32>("/openrov/laser_toggle", 1);
     camTiltPub = nh.advertise<std_msgs::Int32>("/openrov/camera_servo",1);
+
+    d = 0.045;       // [m] - thruster displacement along y-axis for port/stbd thrusters
+    lightVal.data = 0;
+    oldLightVal = 0;
+    laserToggle.data = 0;
+    oldLaserToggle = 0;
 }
 
 void OpenROVTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr& joy)
 {
+    //clean this up into...
+
+    // THRUSTER seciton
+    // LIGHTS section
+    // LASER section
+    // CAMTILT section
+
     double fx_d, fz_d, mz_d; //desired forces in x,z and torque about z
-    d = 0.045;       // [m] - horizontal thruster distance from centerline of CG
 
     // our job now is to calcualte desired prop speed (or pct thrust for PWM ESCs) , given some input.
     // in the short-term let us interpret joystick inputs as a desired wrench (force/torque)
@@ -147,6 +164,37 @@ void OpenROVTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr& joy)
     motor_cmds.motors[2] = Pms;
 
     //motorPub.publish(motor_cmds);
+
+    //LIGHTS
+    lightVal.data = lightVal.data + joy->axes[lightsAdjButton] * -0.1;
+    if (lightVal.data > 1)
+        lightVal.data = 1;
+    if (lightVal.data < 0)
+        lightVal.data = 0;
+
+    //only publish light message when the value changes
+    if (oldLightVal != lightVal.data)
+    {
+        lightPub.publish(lightVal);
+        oldLightVal = lightVal.data;
+        std::cout << "Desired Lights: " << lightVal.data << std::endl;
+    }
+
+    //LASERS
+    if ((joy->buttons[laserToggleButton]) != 0)
+    {
+        if (laserToggle.data == oldLaserToggle) //only if there is a real state change
+        {
+            if (oldLaserToggle == 0)
+                laserToggle.data = 255;
+            else
+                laserToggle.data = 0;
+
+            laserPub.publish(laserToggle);
+            //std::cout << "Laser status: " << laserToggle.data << std::endl;
+            oldLaserToggle = laserToggle.data;
+        }
+    }
 
 }
 
