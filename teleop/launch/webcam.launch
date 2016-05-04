@@ -3,11 +3,14 @@
   <env name = "GSCAM_CONFIG" value = "souphttpsrc location=http://192.168.254.1:8090/?action=stream ! jpegdec ! ffmpegcolorspace" />
   <node pkg = "gscam" type = "gscam" name = "web_cam">
     <param name = "camera_name" value = "web_cam" />
-    <!--remap from = "camera/image_raw" to = "camera/visible/image_raw" /-->
-    <param name="camera_info_url" value="file:///home/laughlin/catkin_ws/src/openrov/config/ost.yaml" />  
-</node>
+    <remap from = "camera/image_raw" to = "fwdcamera/visible/image_raw" />
 
-  <!-- Start image_proc -->
-<node ns="camera" pkg="image_proc" type="image_proc" name="image_processor" />
- 
+  <!-- Path to F100 fwd cam calibration file will publish on /fwdcamera/visible/camera_info -->
+   <!--  <param name="camera_info_url" value="file:///home/laughlin/catkin_ws/src/openrov/config/ost_front_cam_water.yaml" /> -->
+   <param name="camera_info_url" value="$(find openrov)/config/ost_front_cam_water.yaml" />
+  </node>
+
+  <!-- Optional image_proc node. This will publish other camera streams, most notably rectified streams
+  <node ns="camera" pkg="image_proc" type="image_proc" name="image_processor" />
+  -->
 </launch>

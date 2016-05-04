@@ -69,7 +69,7 @@ OpenROVTeleop::OpenROVTeleop():
     lightsAdjButton(6),   // cross key left/right
     laserToggleButton(4),    //button stick right
     camTiltButton(7),      // cross key up/down
-    x_gain(3),
+    x_gain(4),
     z_gain(3),
     yaw_gain(0.3)
 {
@@ -88,6 +88,9 @@ OpenROVTeleop::OpenROVTeleop():
     //initialize publishers and subscribers
     joySub = nh.subscribe<sensor_msgs::Joy>("joy", 10, &OpenROVTeleop::joyCallback, this);
 
+    // sub-optimal to have all topics individualized as below, but OpenROV should be migrating to ZeroMQ pub/sub structure soon
+    // for more info on potential change see: http://forum.openrov.com/t/message-transfer-between-bbb-and-arduino/4239/6
+
     motorPub = nh.advertise<openrov::motortarget>("/openrov/motortarget", 1);
     lightPub = nh.advertise<std_msgs::Float32>("/openrov/light_command", 1);
     laserPub = nh.advertise<std_msgs::Int32>("/openrov/laser_toggle", 1);
@@ -102,12 +105,7 @@ OpenROVTeleop::OpenROVTeleop():
 
 void OpenROVTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr& joy)
 {
-    //clean this up into...
-
     // THRUSTER seciton
-    // LIGHTS section
-    // LASER section
-    // CAMTILT section
 
     double fx_d, fz_d, mz_d; //desired forces in x,z and torque about z
 
@@ -157,11 +155,11 @@ void OpenROVTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr& joy)
     Vms = 1500 + round(( Vpct_d * scaleFactor) * 500);
     Sms = 1500 + round((Spct_d * scaleFactor) * 500);
 
-    //std::cout << "ESC vals: " << Pms << "," << Vms << "," << Sms << std::endl;
+    std::cout << "ESC vals: [" << Pms << "," << Vms << "," << Sms << "]" << std::endl;
 
     motor_cmds.motors[0] = Pms;
     motor_cmds.motors[1] = Vms;
-    motor_cmds.motors[2] = Pms;
+    motor_cmds.motors[2] = Sms;
 
     //motorPub.publish(motor_cmds);
 
@@ -177,7 +175,7 @@ void OpenROVTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr& joy)
     {
         lightPub.publish(lightVal);
         oldLightVal = lightVal.data;
-        std::cout << "Desired Lights: " << lightVal.data << std::endl;
+        //std::cout << "Desired Lights: " << lightVal.data << std::endl;
     }
 
     //LASERS
@@ -231,12 +229,12 @@ double OpenROVTeleop::computePctThrustGraupner230860(double &fDes)
     //std::cout << "Fdes 2308: " << fDes << std::endl;
 double pctThrust;
 
-//asuming linear thrust curve w/max fwd thrust 1.5 kg (14.7 N), and 50% rev thrst (7.35 N)
+//asuming linear thrust curve w/max fwd thrust 1.5 kg (14.7 N), and 75% rev thrst (7.35 N)
 
 if (fDes > 0)
     pctThrust = fDes/14.7;
 if (fDes < 0)
-    pctThrust = fDes/7.35;
+    pctThrust = fDes/11;
 if (fDes == 0)
     pctThrust = 0;
 
@@ -253,7 +251,7 @@ double pctThrust;
 if (fDes > 0)
     pctThrust = fDes/14.7;
 if (fDes < 0)
-    pctThrust = fDes/7.35;
+    pctThrust = fDes/14.7;
 if (fDes == 0)
     pctThrust = 0;
 
@@ -266,7 +264,7 @@ int main(int argc, char** argv)
 
     OpenROVTeleop rovTeleop;
 
-    //
+    //0.2s Period is towards upper limit of not overloading BBB/AtMega2560 115200B serial connection
     rovTeleop.timer = rovTeleop.nh.createTimer(ros::Duration(0.2), &OpenROVTeleop::timerCallback, &rovTeleop);
 
     ros::spin();

@@ -11,6 +11,15 @@
   <param name="scale_linear" value="2" type="double"/>
   <param name="scale_angular" value="2" type="double"/>
 
+  <!-- Default controller settings exist, but here you can change axis/buttons, and gains
+
+  <param name="x_controllerAxis" value="1" />
+  <param name="z_controllerAxis" value="4" />
+
+  and so on... see src/teleop.cpp for full listing of availaible parameters
+  See http://wiki.ros.org/joy for controller axes/button mappings
+
+  -->
 
 </launch>
 
