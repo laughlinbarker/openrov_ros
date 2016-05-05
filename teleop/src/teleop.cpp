@@ -127,13 +127,8 @@ void OpenROVTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr& joy)
     // ROV body frame forces/torques [fx, fz, mz]' - marine body conventions: x: forward, y: stdb, z: down
     Eigen::Vector3d F(fx_d,fz_d,mz_d);
 
-    //std::cout << "F: " << F << std::endl;
-
     // solve for thruster force vector [T_port, T_vert, T_stbd]'
     Eigen::Vector3d T =  A.inverse() * F;  // A.inv safe because A full rank (by inspection, above) <--> invertiable
-
-
-    //std::cout << "Requested motor torques: " << T << std::endl;
 
     //calculate desired percentage thrust from each thruster
     double Ppct_d, Vpct_d, Spct_d;
@@ -143,7 +138,7 @@ void OpenROVTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr& joy)
 
     //std::cout << "Percent Thrust requested: [Port, Vert, Stbd]: [" << Ppct_d << "," << Vpct_d << "," << Spct_d << "]" << std::endl;
 
-    //now we deal with thruster saturation - ROV pilots often prefer prioritizing heading authority over
+    //now we deal with thruster saturation - ROV pilots often prefer prioritizing heading authority
     //but for now lets just scale everything to bring within saturation limits
     double scaleFactor = limitThrusterSaturation(Ppct_d, Vpct_d, Spct_d);
 
