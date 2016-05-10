@@ -186,8 +186,8 @@ include_directories(
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-add_executable(custom-world-frame src/translate_world.cpp)
-target_link_libraries(custom-world-frame ${catkin_LIBRARIES})
+add_executable(custom_world_frame src/translate_world.cpp)
+target_link_libraries(custom_world_frame ${catkin_LIBRARIES})
 
-add_executable(get-transform src/listener.cpp)
-target_link_libraries(get-transform ${catkin_LIBRARIES})
+add_executable(get_scale src/listener.cpp)
+target_link_libraries(get_scale ${catkin_LIBRARIES})

@@ -13,7 +13,9 @@ int main(int argc, char** argv){
   while (node.ok()){
     tf::StampedTransform transform;
     try{
-      listener.lookupTransform("/ORB_SLAM/new_world", "/ORB_SLAM/Camera",  
+    //  listener.waitForTransform("/ORB_SLAM/Custom_world", "/ORB_SLAM/End_point",
+    //                           ros::Time(0), ros::Duration(5.0));
+      listener.lookupTransform("/ORB_SLAM/Custom_world", "/ORB_SLAM/End_point",  
                                ros::Time(0), transform);
     }
     catch (tf::TransformException ex){
@@ -22,7 +24,7 @@ int main(int argc, char** argv){
     }
      
     tf::transformStampedTFToMsg(transform, msg);
-    std::cout << "transform" << msg << std::endl;
+    std::cout << "transform: " << msg.transform.translation << std::endl << std::endl;
   }
   return 0;
 }

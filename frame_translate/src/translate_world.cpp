@@ -6,6 +6,8 @@
 #include <iostream>
 #include <string>
 
+std::string frame_name;
+
 void tfCallback(const tf2_msgs::TFMessage& msg){
   static bool isNewWorld = true;
   static double begin = ros::Time::now().toSec();
@@ -39,7 +41,7 @@ void tfCallback(const tf2_msgs::TFMessage& msg){
   }
 
   static tf::TransformBroadcaster br;
-  br.sendTransform(tf::StampedTransform(new_world, ros::Time::now(), "ORB_SLAM/World", "ORB_SLAM/new_world"));
+  br.sendTransform(tf::StampedTransform(new_world, ros::Time::now(), "ORB_SLAM/World", frame_name));
   /*
   tf::TransformListener listener; 
   tf::StampedTransform nWorldToCam;
@@ -59,6 +61,12 @@ int main(int argc, char** argv){
   ros::init(argc, argv, "world_transform");
   
   ros::NodeHandle node;
+
+  if (argc == 1){
+    frame_name = "ORB_SLAM/Custom_world";
+  }else{
+    frame_name = argv[1];
+  }
 
   tf::TransformListener listener;
   //tf::TransformBroadcaster br;

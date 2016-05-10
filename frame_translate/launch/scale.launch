@@ -1,0 +1,4 @@
+<launch>
+  <node name="end_point" pkg="frame_translate" type="custom_world_frame" args="/ORB_SLAM/End_point" />
+  <!--node name="scale" pkg="frame_translate" type="get_scale" /-->
+</launch>
